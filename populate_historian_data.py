@@ -12,14 +12,70 @@ import uuid
 import time
 import calendar
 import datetime
+import json
+import boto3
 
 logger = logging.getLogger()
 
-# Initialize database related parameters
-db_host_name = "<Enter Host name or IP addres of the Historian DB>"
-db_user = "<User ID of the Historian DB>"
-db_password = "<Password of the Historian DB>"
+#Create the secret in AWS Secrets Manager with a structure like:
+#json
+#{
+#  "username": "your_db_user",
+#  "password": "your_db_password"
+#}
+#Update configuration: Replace SECRET_NAME and AWS_REGION with your actual values
+
+#Ensure IAM permissions: The AWS credentials running this script need permissions to access Secrets Manager:
+#json
+#{
+#  "Effect": "Allow",
+#  "Action": "secretsmanager:GetSecretValue",
+#  "Resource": "arn:aws:secretsmanager:region:account:secret:historian-db-credentials*"
+#}
+
+# AWS Secrets Manager configuration
+SECRET_NAME = "historian-db-credentials"  # Update with your actual secret name
+AWS_REGION = "us-east-1"  # Update with your AWS region
+
+# Database configuration
+db_host_name = "<Enter Host name or IP address of the Historian DB>"
 db_name = "<Database name>"
+
+def get_db_credentials_from_secrets_manager():
+    """
+    Retrieve database credentials from AWS Secrets Manager.
+    
+    Returns:
+        tuple: (db_user, db_password)
+    """
+    try:
+        # Create Secrets Manager client
+        secrets_client = boto3.client('secretsmanager', region_name=AWS_REGION)
+        
+        # Retrieve the secret
+        response = secrets_client.get_secret_value(SecretId=SECRET_NAME)
+        
+        # Parse the secret value
+        if 'SecretString' in response:
+            secret = json.loads(response['SecretString'])
+            db_user = secret.get('username')
+            db_password = secret.get('password')
+            
+            if not db_user or not db_password:
+                raise ValueError("Secret does not contain 'username' or 'password' keys")
+            
+            logger.info("Successfully retrieved database credentials from Secrets Manager")
+            return db_user, db_password
+        else:
+            raise ValueError("Secret does not contain SecretString")
+            
+    except Exception as error:
+        logger.error(f"Error retrieving credentials from Secrets Manager: {error}")
+        raise
+
+
+# Retrieve credentials from Secrets Manager
+db_user, db_password = get_db_credentials_from_secrets_manager()
 
 # Create the connection object
 myconn = mysql.connector.connect(
