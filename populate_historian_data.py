@@ -3,7 +3,9 @@ Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Last Updated on 25th Feb, 2023
 Authored by: Shashi Shekhar
 Reviewed by: Reetesh varshney
+Updated on 11th July, 2026 to replace databse user and password with secret manager variables
 """
+
 
 import mysql.connector
 import logging
